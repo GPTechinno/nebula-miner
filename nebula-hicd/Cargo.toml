@@ -1,0 +1,24 @@
+[package]
+name = "nebula-hicd"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+postcard-rpc = { version = "0.11" }
+postcard-schema = { version = "0.2", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"], default-features = false }
+
+[features]
+std = []
+
+[profile.ci]
+inherits = "dev"
+debug = false
+strip = true
+debug-assertions = true
+overflow-checks = true
+lto = false
+panic = 'unwind'
+incremental = false
+codegen-units = 256
+rpath = false

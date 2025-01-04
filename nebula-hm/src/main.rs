@@ -21,9 +21,9 @@ pub mod handlers;
 
 
 fn usb_config(serial: &'static str) -> Config<'static> {
-    let mut config = Config::new(0x16c0, 0x27DD);
+    let mut config = Config::new(0x0000, 0x1337);
     config.manufacturer = Some("GPTechinno");
-    config.product = Some("nebula-hm");
+    config.product = Some("Nebula-HM");
     config.serial_number = Some(serial);
 
     // Required for windows compatibility.
@@ -73,7 +73,7 @@ async fn main(spawner: Spawner) {
     let context = app::Context { unique_id, led };
 
     let (device, tx_impl, rx_impl) = app::STORAGE.init_poststation(driver, config, pbufs.tx_buf.as_mut_slice());
-    let dispatcher = app::MyApp::new(context, spawner.into());
+    let dispatcher = app::Miner::new(context, spawner.into());
     let vkk = dispatcher.min_key_len();
     let mut server: app::AppServer = Server::new(
         tx_impl,

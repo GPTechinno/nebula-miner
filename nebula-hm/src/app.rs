@@ -1,10 +1,11 @@
-//! A basic postcard-rpc/poststation-compatible application
-
-use crate::handlers::{get_led, picoboot_reset, set_led, sleep_handler, unique_id};
+use crate::handlers::{
+    hash_job, info, picoboot_reset, set_led, sleep_handler, stop_hashing, unique_id,
+};
 use embassy_rp::{gpio::Output, peripherals::USB, usb};
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use nebula_hicd::{
-    GetLedEndpoint, GetUniqueIdEndpoint, RebootToPicoBoot, SetLedEndpoint, SleepEndpoint,
+    GetInfoEndpoint, GetUniqueIdEndpoint, JobTopic, RebootToPicoBoot, SetLedEndpoint,
+    SleepEndpoint, StopTopic,
 };
 use nebula_hicd::{ENDPOINT_LIST, TOPICS_IN_LIST, TOPICS_OUT_LIST};
 use postcard_rpc::server::impls::embassy_usb_v0_3::{
@@ -65,7 +66,7 @@ pub type AppTx = WireTxImpl<ThreadModeRawMutex, AppDriver>;
 /// AppRx is the type of our receiver, which is how we receive information from the client
 pub type AppRx = WireRxImpl<AppDriver>;
 /// AppServer is the type of the postcard-rpc server we are using
-pub type AppServer = Server<AppTx, AppRx, WireRxBuf, MyApp>;
+pub type AppServer = Server<AppTx, AppRx, WireRxBuf, Miner>;
 
 /// Statically store our packet buffers
 pub static PBUFS: ConstStaticCell<BufStorage> = ConstStaticCell::new(BufStorage::new());
@@ -74,10 +75,7 @@ pub static STORAGE: AppStorage = AppStorage::new();
 
 // This macro defines your application
 define_dispatch! {
-    // You can set the name of your app to any valid Rust type name. We use
-    // "MyApp" here. You'll use this in `main` to create an instance of the
-    // app.
-    app: MyApp;
+    app: Miner;
     // This chooses how we spawn functions. Here, we use the implementation
     // from the `embassy_usb_v0_3` implementation
     spawn_fn: spawn_fn;
@@ -111,7 +109,7 @@ define_dispatch! {
         | RebootToPicoBoot          | blocking  | picoboot_reset                |
         | SleepEndpoint             | spawn     | sleep_handler                 |
         | SetLedEndpoint            | blocking  | set_led                       |
-        | GetLedEndpoint            | blocking  | get_led                       |
+        | GetInfoEndpoint           | blocking  | info                          |
     };
 
     // Topics IN are messages we receive from the client, but that we do not reply
@@ -124,6 +122,8 @@ define_dispatch! {
 
         | TopicTy                   | kind      | handler                       |
         | ----------                | ----      | -------                       |
+        | JobTopic                  | async     | hash_job                      |
+        | StopTopic                 | async     | stop_hashing                  |
     };
 
     // Topics OUT are the messages we send to the client whenever we'd like. Since
